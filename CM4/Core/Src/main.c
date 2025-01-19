@@ -130,7 +130,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	  count++;
+	  HAL_Delay(10000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -248,6 +249,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+	  count++;
   }
   /* USER CODE END Error_Handler_Debug */
 }
