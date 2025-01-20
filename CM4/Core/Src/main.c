@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "uart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -66,13 +66,19 @@ ETH_TxPacketConfig TxConfig;
 
 ETH_HandleTypeDef heth;
 
+UART_HandleTypeDef huart4;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 int count = 1;
+
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+static void MX_GPIO_Init(void);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -121,6 +127,12 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  huart4.Instance = UART4;
+
+  UART_Init(&huart4, 115200);
+  UART_Receive_IT(&huart4, rxBuffer, RX_BUFFER_SIZE);
+
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -130,9 +142,10 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-	  count++;
-	  HAL_Delay(10000);
+//	  UART_Transmit(&huart4, "XD");
+
     /* USER CODE BEGIN 3 */
+	  count++;
   }
   /* USER CODE END 3 */
 }
@@ -187,6 +200,13 @@ void MX_ETH_Init(void)
 }
 
 /**
+  * @brief UART4 Initialization Function
+  * @param None
+  * @retval None
+  */
+
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -234,6 +254,23 @@ void MX_USART3_UART_Init(void)
 
 }
 
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
+}
+
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
@@ -249,7 +286,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
-	  count++;
+
   }
   /* USER CODE END Error_Handler_Debug */
 }

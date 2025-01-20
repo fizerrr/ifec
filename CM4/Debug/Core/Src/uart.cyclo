@@ -1,0 +1,6 @@
+../Core/Src/uart.c:17:6:UART_Init	5
+../Core/Src/uart.c:61:6:UART_Transmit	1
+../Core/Src/uart.c:72:6:UART_Receive	1
+../Core/Src/uart.c:83:6:UART_Receive_IT	2
+../Core/Src/uart.c:97:6:HAL_UART_RxCpltCallback	3
+../Core/Src/uart.c:121:6:HAL_UART_ErrorCallback	1
