@@ -28,6 +28,17 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
+#include "stm32h7xx_ll_tim.h"
+#include "stm32h7xx_ll_bus.h"
+#include "stm32h7xx_ll_cortex.h"
+#include "stm32h7xx_ll_rcc.h"
+#include "stm32h7xx_ll_system.h"
+#include "stm32h7xx_ll_utils.h"
+#include "stm32h7xx_ll_pwr.h"
+#include "stm32h7xx_ll_gpio.h"
+#include "stm32h7xx_ll_dma.h"
+
+#include "stm32h7xx_ll_exti.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -57,10 +68,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define STLINK_RX_Pin GPIO_PIN_8
-#define STLINK_RX_GPIO_Port GPIOD
-#define STLINK_TX_Pin GPIO_PIN_9
-#define STLINK_TX_GPIO_Port GPIOD
 
 /* USER CODE BEGIN Private defines */
 

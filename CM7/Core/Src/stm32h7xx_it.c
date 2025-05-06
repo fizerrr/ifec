@@ -19,7 +19,9 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "control.h"
 #include "stm32h7xx_it.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -197,6 +199,25 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32h7xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles TIM2 global interrupt.
+  */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+	  if (LL_TIM_IsActiveFlag_UPDATE(TIM2))
+	  {
+	    LL_TIM_ClearFlag_UPDATE(TIM2);
+
+	    // ⬇️ Twoja pętla regulacji:
+	    Control_Loop();
+	  }
+  /* USER CODE END TIM2_IRQn 0 */
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
