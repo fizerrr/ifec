@@ -1,0 +1,7 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_rcc.h:2677:26:LL_RCC_GetAPB2Prescaler	4	static
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:1845:22:LL_TIM_SetAutoReload	16	static
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:2654:22:LL_TIM_OC_SetCompareCH1	16	static
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:5075:22:LL_TIM_GenerateEvent_UPDATE	16	static
+../Core/Src/pwm_config.c:16:6:PWM_Init	16	static
+../Core/Src/pwm_config.c:35:10:PWM_GetTimerClock	4	static
+../Core/Src/pwm_config.c:40:10:PWM_GetARR	4	static

@@ -1,0 +1,3 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:2654:22:LL_TIM_OC_SetCompareCH1	16	static
+../Core/Src/pwm_control.c:13:6:PWM_SetDutyCycle	24	static
+../Core/Src/pwm_control.c:55:6:PWM_SetDeadTime_raw	16	static
