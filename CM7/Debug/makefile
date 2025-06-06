@@ -35,34 +35,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := ifec_CM7
+BUILD_ARTIFACT_NAME := adctest_CM7
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-ifec_CM7.elf \
+adctest_CM7.elf \
 
 MAP_FILES += \
-ifec_CM7.map \
+adctest_CM7.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-ifec_CM7.list \
+adctest_CM7.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: ifec_CM7.elf secondary-outputs
+main-build: adctest_CM7.elf secondary-outputs
 
 # Tool invocations
-ifec_CM7.elf ifec_CM7.map: $(OBJS) $(USER_OBJS) D:\Users\birdd\STM32CubeIDE\workspace_1.14.1\ifec\CM7\STM32H755ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "ifec_CM7.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"D:\Users\birdd\STM32CubeIDE\workspace_1.14.1\ifec\CM7\STM32H755ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ifec_CM7.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+adctest_CM7.elf adctest_CM7.map: $(OBJS) $(USER_OBJS) D:\Users\birdd\STM32CubeIDE\workspace_1.14.1\adctest\CM7\STM32H755ZITX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "adctest_CM7.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m7 -T"D:\Users\birdd\STM32CubeIDE\workspace_1.14.1\adctest\CM7\STM32H755ZITX_FLASH.ld" --specs=nosys.specs -Wl,-Map="adctest_CM7.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -71,14 +71,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-ifec_CM7.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "ifec_CM7.list"
+adctest_CM7.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "adctest_CM7.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout ifec_CM7.elf ifec_CM7.list ifec_CM7.map
+	-$(RM) adctest_CM7.elf adctest_CM7.list adctest_CM7.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

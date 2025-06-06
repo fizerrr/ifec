@@ -21,7 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "pwm_control.h"
+#include "pi_controller.h"
+
+
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -46,23 +49,55 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-int count = 0;
+int test = 0;
+int test_iqr = 0;
+/* Zmienna do przechowywania wyniku ADC */
+uint16_t adc_result,buck_fault;
+float current_inductor,current_out,voltage_out,voltage_in;
+int duty = 0,target_duty=0;
+/* Zmienna do pomiaru czasu */
+uint32_t start_time, stop_time, elapsed_time;
+float setpoint = 0;
+
+
+__attribute__((section(".RAM_D2"))) uint16_t adc_buffer[2];
+__attribute__((section(".RAM_D2"))) uint16_t adc2_buffer[2];
+
+
+uint16_t src = 0x1234;
+uint16_t dst = 0;
+
+ float max_current = 10.0f;
+ uint16_t step_fast = 10;   // większy krok przy niskim prądzie
+ uint16_t step_slow = 1;    // mniejszy krok przy zbliżaniu się do granicy
+ float threshold = 9.5f;    // próg, po którym przechodzimy na wolniejsze narastanie
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
+static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
-static void MX_TIM2_Init(void);
+static void MX_ADC2_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
-/* USER CODE BEGIN PFP */
+
+float adc_to_voltage(uint16_t adc_val);
+float adc_to_current(uint16_t adc_val);
+void regulate_duty_fast(uint16_t target_duty);
+float compute_average_adc(uint16_t* buffer, uint8_t channel_index);
+float adc_to_current_inductor(uint16_t adc_val);
+float adc_to_current_out(uint16_t adc_val);
+float adc_to_voltage_out(uint16_t adc_val);
+
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int test = 0;
-float duty = 0.5f;
-uint8_t dt = 100;
+PI_Controller pi_regulator;
 /* USER CODE END 0 */
 
 /**
@@ -74,23 +109,17 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
-/* USER CODE BEGIN Boot_Mode_Sequence_0 */
-  int32_t timeout;
-/* USER CODE END Boot_Mode_Sequence_0 */
 
-/* USER CODE BEGIN Boot_Mode_Sequence_1 */
-  /* Wait until CPU2 boots and enters in stop mode or timeout*/
-  timeout = 0xFFFF;
-  while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) != RESET) && (timeout-- > 0));
-  if ( timeout < 0 )
-  {
-  Error_Handler();
-  }
-/* USER CODE END Boot_Mode_Sequence_1 */
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+  LL_APB4_GRP1_EnableClock(LL_APB4_GRP1_PERIPH_SYSCFG);
+
+  /* System interrupt init*/
+  NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
+
+  /* SysTick_IRQn interrupt configuration */
+  NVIC_SetPriority(SysTick_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),15, 0));
 
   /* USER CODE BEGIN Init */
 
@@ -98,23 +127,9 @@ int main(void)
 
   /* Configure the system clock */
   SystemClock_Config();
-/* USER CODE BEGIN Boot_Mode_Sequence_2 */
-/* When system initialization is finished, Cortex-M7 will release Cortex-M4 by means of
-HSEM notification */
-/*HW semaphore Clock enable*/
-__HAL_RCC_HSEM_CLK_ENABLE();
-/*Take HSEM */
-HAL_HSEM_FastTake(HSEM_ID_0);
-/*Release HSEM in order to notify the CPU2(CM4)*/
-HAL_HSEM_Release(HSEM_ID_0,0);
-/* wait until CPU2 wakes up from stop mode */
-timeout = 0xFFFF;
-while((__HAL_RCC_GET_FLAG(RCC_FLAG_D2CKRDY) == RESET) && (timeout-- > 0));
-if ( timeout < 0 )
-{
-Error_Handler();
-}
-/* USER CODE END Boot_Mode_Sequence_2 */
+
+/* Configure the peripherals common clocks */
+  PeriphCommonClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
@@ -122,22 +137,86 @@ Error_Handler();
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_ADC1_Init();
   MX_TIM1_Init();
-  MX_TIM2_Init();
+  MX_ADC2_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  PWM_Init();                    // Pobierz raz częstotliwość zegara
-  PWM_SetDutyCycle(0.4f);        // 40% wypełnienia
-//  PWM_SetDeadTime_ns(100);       // 100 ns deadtime
 
-  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);
-  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+
+  // Włącz kanał CH1 (PE9) i CH1N (PE8)
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1);    // kanał główny
+  LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);   // kanał komplementarny
+
+  // Włącz wyjścia (ważne dla zaawansowanego timera TIM1)
   LL_TIM_EnableAllOutputs(TIM1);
+
+  // Włącz licznik
   LL_TIM_EnableCounter(TIM1);
 
 
-  LL_TIM_EnableCounter(TIM2);            // start licznika
-  LL_TIM_EnableIT_UPDATE(TIM2);          // włącz przerwanie UPDATE (overflow)
-  LL_TIM_GenerateEvent_UPDATE(TIM2);     // wymuś natychmiastowe zdarzenie (opcjonalne)
+
+
+
+
+
+  /*-----------------------------------------------------------
+    1) KONFIGURACJA DMA (adresy + długość)
+  -----------------------------------------------------------*/
+  LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)&ADC1->DR);
+  LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)adc_buffer);
+  LL_DMA_SetDataLength(DMA1, LL_DMA_STREAM_0, 2);
+  LL_DMA_EnableStream    (DMA1, LL_DMA_STREAM_0);
+
+  /*-----------------------------------------------------------
+    2) ADC: tryb „unlimited DMA requests”
+  -----------------------------------------------------------*/
+  /* Dane z ADC trafiają do bufora przez DMA, w trybie „circular” */
+  ADC1->CFGR &= ~ADC_CFGR_DMNGT;                            // 00 = DR
+  ADC1->CFGR |=  (ADC_CFGR_DMNGT_0 | ADC_CFGR_DMNGT_1);     // 10 = DMA circular
+
+
+  /*-----------------------------------------------------------
+    3) START: ADC → TIM3
+  -----------------------------------------------------------*/
+  LL_ADC_Enable(ADC1);
+  while (!LL_ADC_IsActiveFlag_ADRDY(ADC1)) ;
+  LL_ADC_REG_StartConversion(ADC1);   // rozpocznie się po TRGO
+
+
+
+
+
+LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_1, (uint32_t)&ADC2->DR);
+LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_1, (uint32_t)adc2_buffer);
+LL_DMA_SetDataLength   (DMA1, LL_DMA_STREAM_1, 2);
+LL_DMA_EnableStream    (DMA1, LL_DMA_STREAM_1);
+
+/*-----------------------------------------------------------
+  2) ADC: tryb „unlimited DMA requests”
+-----------------------------------------------------------*/
+/* Dane z ADC trafiają do bufora przez DMA, w trybie „circular” */
+ADC2->CFGR &= ~ADC_CFGR_DMNGT;                            // 00 = DR
+ADC2->CFGR |=  (ADC_CFGR_DMNGT_0 | ADC_CFGR_DMNGT_1);     // 10 = DMA circular
+
+
+/*-----------------------------------------------------------
+  3) START: ADC → TIM3
+-----------------------------------------------------------*/
+LL_ADC_Enable(ADC2);
+while (!LL_ADC_IsActiveFlag_ADRDY(ADC2)) ;
+LL_ADC_REG_StartConversion(ADC2);   // rozpocznie się po TRGO
+
+
+
+PI_Init(&pi_regulator, 0.01f, 0.01f, 0.000005f, 0.0f, 1200.0f);  // Ts = 2 µs (500 kHz)
+
+
+
+LL_TIM_EnableIT_UPDATE(TIM4);  // zezwolenie na przerwanie od przepełnienia
+LL_TIM_EnableCounter(TIM4);    // start timera
+
 
   /* USER CODE END 2 */
 
@@ -146,9 +225,48 @@ Error_Handler();
   while (1)
   {
 
-//	  test++;
-//	  PWM_SetDutyCycle(duty);
-//	  PWM_SetDeadTime_raw(dt);
+
+	    start_time = DWT->CYCCNT;
+
+
+	    current_inductor = adc_to_current_inductor(adc_buffer[0]);
+	    voltage_out = adc_to_voltage_out(adc_buffer[1]);
+
+	    current_out = adc_to_current_out(adc2_buffer[1]);
+	    voltage_in = adc_to_voltage(adc2_buffer[0]);
+
+
+	    buck_fault = LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_2);
+
+
+//	    LL_TIM_OC_SetCompareCH1(TIM1, duty);
+//
+//	    // Odczyt danych z DMA (bufor zawsze aktualny)
+//	    uint16_t adc_ch2 = adc_buffer[0];
+//	    uint16_t adc_ch3 = adc_buffer[1];
+//	    uint16_t adc2_ch5 = adc2_buffer[0];
+//	    uint16_t adc2_ch11 = adc2_buffer[1];
+//
+//	    current_inductor = adc_to_current(adc_ch2);
+//	    voltage_out = adc_to_voltage(adc_ch3);
+//
+//	    current_out = adc_to_current(adc2_ch11);
+//	    voltage_in = adc_to_voltage(adc2_ch5);
+//
+//	    if (current_inductor > setpoint)
+//	    {
+//	        LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_6);
+//	    }
+//	    else
+//	    {
+//	        LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_6);
+//	    }
+
+	    stop_time = DWT->CYCCNT;
+	    elapsed_time = stop_time - start_time;
+
+	    test++;
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -162,62 +280,312 @@ Error_Handler();
   */
 void SystemClock_Config(void)
 {
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /** Supply configuration update enable
-  */
-  HAL_PWREx_ConfigSupply(PWR_LDO_SUPPLY);
-
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
-  while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
-
-  __HAL_RCC_SYSCFG_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE0);
-
-  while(!__HAL_PWR_GET_FLAG(PWR_FLAG_VOSRDY)) {}
-
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 4;
-  RCC_OscInitStruct.PLL.PLLN = 60;
-  RCC_OscInitStruct.PLL.PLLP = 2;
-  RCC_OscInitStruct.PLL.PLLQ = 4;
-  RCC_OscInitStruct.PLL.PLLR = 2;
-  RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
-  RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
-  RCC_OscInitStruct.PLL.PLLFRACN = 0;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  LL_FLASH_SetLatency(LL_FLASH_LATENCY_4);
+  while(LL_FLASH_GetLatency()!= LL_FLASH_LATENCY_4)
   {
-    Error_Handler();
+  }
+  LL_PWR_ConfigSupply(LL_PWR_LDO_SUPPLY);
+  LL_PWR_SetRegulVoltageScaling(LL_PWR_REGU_VOLTAGE_SCALE2);
+  while (LL_PWR_IsActiveFlag_VOS() == 0)
+  {
+  }
+  LL_RCC_HSI_Enable();
+
+   /* Wait till HSI is ready */
+  while(LL_RCC_HSI_IsReady() != 1)
+  {
+
+  }
+  LL_RCC_HSI_SetCalibTrimming(64);
+  LL_RCC_HSI_SetDivider(LL_RCC_HSI_DIV1);
+  LL_RCC_PLL_SetSource(LL_RCC_PLLSOURCE_HSI);
+  LL_RCC_PLL1P_Enable();
+  LL_RCC_PLL1_SetVCOInputRange(LL_RCC_PLLINPUTRANGE_8_16);
+  LL_RCC_PLL1_SetVCOOutputRange(LL_RCC_PLLVCORANGE_WIDE);
+  LL_RCC_PLL1_SetM(4);
+  LL_RCC_PLL1_SetN(30);
+  LL_RCC_PLL1_SetP(2);
+  LL_RCC_PLL1_SetQ(2);
+  LL_RCC_PLL1_SetR(2);
+  LL_RCC_PLL1_Enable();
+
+   /* Wait till PLL is ready */
+  while(LL_RCC_PLL1_IsReady() != 1)
+  {
   }
 
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2
-                              |RCC_CLOCKTYPE_D3PCLK1|RCC_CLOCKTYPE_D1PCLK1;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
-  RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
+   /* Intermediate AHB prescaler 2 when target frequency clock is higher than 80 MHz */
+   LL_RCC_SetAHBPrescaler(LL_RCC_AHB_DIV_2);
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
+  LL_RCC_SetSysClkSource(LL_RCC_SYS_CLKSOURCE_PLL1);
+
+   /* Wait till System clock is ready */
+  while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_PLL1)
   {
-    Error_Handler();
+
   }
+  LL_RCC_SetSysPrescaler(LL_RCC_SYSCLK_DIV_1);
+  LL_RCC_SetAHBPrescaler(LL_RCC_AHB_DIV_1);
+  LL_RCC_SetAPB1Prescaler(LL_RCC_APB1_DIV_2);
+  LL_RCC_SetAPB2Prescaler(LL_RCC_APB2_DIV_2);
+  LL_RCC_SetAPB3Prescaler(LL_RCC_APB3_DIV_2);
+  LL_RCC_SetAPB4Prescaler(LL_RCC_APB4_DIV_2);
+
+  LL_Init1msTick(240000000);
+
+  LL_SetSystemCoreClock(240000000);
+}
+
+/**
+  * @brief Peripherals Common Clock Configuration
+  * @retval None
+  */
+void PeriphCommonClock_Config(void)
+{
+  LL_RCC_PLL2P_Enable();
+  LL_RCC_PLL2_SetVCOInputRange(LL_RCC_PLLINPUTRANGE_2_4);
+  LL_RCC_PLL2_SetVCOOutputRange(LL_RCC_PLLVCORANGE_WIDE);
+  LL_RCC_PLL2_SetM(32);
+  LL_RCC_PLL2_SetN(100);
+  LL_RCC_PLL2_SetP(4);
+  LL_RCC_PLL2_SetQ(2);
+  LL_RCC_PLL2_SetR(2);
+  LL_RCC_PLL2_Enable();
+
+   /* Wait till PLL is ready */
+  while(LL_RCC_PLL2_IsReady() != 1)
+  {
+  }
+
+}
+
+/**
+  * @brief ADC1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC1_Init(void)
+{
+
+  /* USER CODE BEGIN ADC1_Init 0 */
+
+  /* USER CODE END ADC1_Init 0 */
+
+  LL_ADC_InitTypeDef ADC_InitStruct = {0};
+  LL_ADC_REG_InitTypeDef ADC_REG_InitStruct = {0};
+  LL_ADC_CommonInitTypeDef ADC_CommonInitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSOURCE_PLL2P);
+
+  /* Peripheral clock enable */
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_ADC12);
+
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOA);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOF);
+  /**ADC1 GPIO Configuration
+  PA6   ------> ADC1_INP3
+  PA7   ------> ADC1_INN3
+  PF11   ------> ADC1_INP2
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_6|LL_GPIO_PIN_7;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_11;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+  /* ADC1 DMA Init */
+
+  /* ADC1 Init */
+  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_STREAM_0, LL_DMAMUX1_REQ_ADC1);
+
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_STREAM_0, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  LL_DMA_SetStreamPriorityLevel(DMA1, LL_DMA_STREAM_0, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA1, LL_DMA_STREAM_0, LL_DMA_MODE_CIRCULAR);
+
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_STREAM_0, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_STREAM_0, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_STREAM_0, LL_DMA_PDATAALIGN_HALFWORD);
+
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_STREAM_0, LL_DMA_MDATAALIGN_HALFWORD);
+
+  LL_DMA_DisableFifoMode(DMA1, LL_DMA_STREAM_0);
+
+  /* USER CODE BEGIN ADC1_Init 1 */
+
+  /* USER CODE END ADC1_Init 1 */
+
+  /** Common config
+  */
+  LL_ADC_SetOverSamplingScope(ADC1, LL_ADC_OVS_DISABLE);
+  ADC_InitStruct.Resolution = LL_ADC_RESOLUTION_16B;
+  ADC_InitStruct.LowPowerMode = LL_ADC_LP_MODE_NONE;
+  LL_ADC_Init(ADC1, &ADC_InitStruct);
+  ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
+  ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_ENABLE_2RANKS;
+  ADC_REG_InitStruct.SequencerDiscont = DISABLE;
+  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS;
+  ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_PRESERVED;
+  LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
+  ADC_CommonInitStruct.CommonClock = LL_ADC_CLOCK_ASYNC_DIV1;
+  ADC_CommonInitStruct.Multimode = LL_ADC_MULTI_INDEPENDENT;
+  LL_ADC_CommonInit(__LL_ADC_COMMON_INSTANCE(ADC1), &ADC_CommonInitStruct);
+
+  /* Disable ADC deep power down (enabled by default after reset state) */
+  LL_ADC_DisableDeepPowerDown(ADC1);
+  /* Enable ADC internal voltage regulator */
+  LL_ADC_EnableInternalRegulator(ADC1);
+  /* Delay for ADC internal voltage regulator stabilization. */
+  /* Compute number of CPU cycles to wait for, from delay in us. */
+  /* Note: Variable divided by 2 to compensate partially */
+  /* CPU processing cycles (depends on compilation optimization). */
+  /* Note: If system core clock frequency is below 200kHz, wait time */
+  /* is only a few CPU processing cycles. */
+  __IO uint32_t wait_loop_index;
+  wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
+  while(wait_loop_index != 0)
+  {
+    wait_loop_index--;
+  }
+
+  /** Configure Regular Channel
+  */
+  LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_2);
+  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+  LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_2, LL_ADC_SINGLE_ENDED);
+
+  /** Configure Regular Channel
+  */
+
+  LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_3);
+  LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_3, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+  LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_3, LL_ADC_DIFFERENTIAL_ENDED);
+
+  /* USER CODE BEGIN ADC1_Init 2 */
+  ADC1->PCSEL = (1U << 2) | (1U << 3);
+
+
+
+  /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief ADC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_ADC2_Init(void)
+{
+
+  /* USER CODE BEGIN ADC2_Init 0 */
+
+  /* USER CODE END ADC2_Init 0 */
+
+  LL_ADC_InitTypeDef ADC_InitStruct = {0};
+  LL_ADC_REG_InitTypeDef ADC_REG_InitStruct = {0};
+
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSOURCE_PLL2P);
+
+  /* Peripheral clock enable */
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_ADC12);
+
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOC);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB);
+  /**ADC2 GPIO Configuration
+  PC1   ------> ADC2_INP11
+  PB0   ------> ADC2_INN5
+  PB1   ------> ADC2_INP5
+  */
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_1;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_0|LL_GPIO_PIN_1;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_ANALOG;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_NO;
+  LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* ADC2 DMA Init */
+
+  /* ADC2 Init */
+  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_STREAM_1, LL_DMAMUX1_REQ_ADC2);
+
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_STREAM_1, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  LL_DMA_SetStreamPriorityLevel(DMA1, LL_DMA_STREAM_1, LL_DMA_PRIORITY_LOW);
+
+  LL_DMA_SetMode(DMA1, LL_DMA_STREAM_1, LL_DMA_MODE_CIRCULAR);
+
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_STREAM_1, LL_DMA_PERIPH_NOINCREMENT);
+
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_STREAM_1, LL_DMA_MEMORY_INCREMENT);
+
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_STREAM_1, LL_DMA_PDATAALIGN_HALFWORD);
+
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_STREAM_1, LL_DMA_MDATAALIGN_HALFWORD);
+
+  LL_DMA_DisableFifoMode(DMA1, LL_DMA_STREAM_1);
+
+  /* USER CODE BEGIN ADC2_Init 1 */
+
+  /* USER CODE END ADC2_Init 1 */
+
+  /** Common config
+  */
+  LL_ADC_SetOverSamplingScope(ADC2, LL_ADC_OVS_DISABLE);
+  ADC_InitStruct.Resolution = LL_ADC_RESOLUTION_16B;
+  ADC_InitStruct.LowPowerMode = LL_ADC_LP_MODE_NONE;
+  LL_ADC_Init(ADC2, &ADC_InitStruct);
+  ADC_REG_InitStruct.TriggerSource = LL_ADC_REG_TRIG_SOFTWARE;
+  ADC_REG_InitStruct.SequencerLength = LL_ADC_REG_SEQ_SCAN_ENABLE_2RANKS;
+  ADC_REG_InitStruct.SequencerDiscont = DISABLE;
+  ADC_REG_InitStruct.ContinuousMode = LL_ADC_REG_CONV_CONTINUOUS;
+  ADC_REG_InitStruct.Overrun = LL_ADC_REG_OVR_DATA_PRESERVED;
+  LL_ADC_REG_Init(ADC2, &ADC_REG_InitStruct);
+
+  /* Disable ADC deep power down (enabled by default after reset state) */
+  LL_ADC_DisableDeepPowerDown(ADC2);
+  /* Enable ADC internal voltage regulator */
+  LL_ADC_EnableInternalRegulator(ADC2);
+  /* Delay for ADC internal voltage regulator stabilization. */
+  /* Compute number of CPU cycles to wait for, from delay in us. */
+  /* Note: Variable divided by 2 to compensate partially */
+  /* CPU processing cycles (depends on compilation optimization). */
+  /* Note: If system core clock frequency is below 200kHz, wait time */
+  /* is only a few CPU processing cycles. */
+  __IO uint32_t wait_loop_index;
+  wait_loop_index = ((LL_ADC_DELAY_INTERNAL_REGUL_STAB_US * (SystemCoreClock / (100000 * 2))) / 10);
+  while(wait_loop_index != 0)
+  {
+    wait_loop_index--;
+  }
+
+  /** Configure Regular Channel
+  */
+  LL_ADC_REG_SetSequencerRanks(ADC2, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_5);
+  LL_ADC_SetChannelSamplingTime(ADC2, LL_ADC_CHANNEL_5, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+  LL_ADC_SetChannelSingleDiff(ADC2, LL_ADC_CHANNEL_5, LL_ADC_DIFFERENTIAL_ENDED);
+  /* USER CODE BEGIN ADC2_Init 2 */
+  LL_ADC_REG_SetSequencerRanks(ADC2, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_11);
+  LL_ADC_SetChannelSamplingTime(ADC2, LL_ADC_CHANNEL_11, LL_ADC_SAMPLINGTIME_1CYCLE_5);
+  LL_ADC_SetChannelSingleDiff(ADC2, LL_ADC_CHANNEL_11, LL_ADC_SINGLE_ENDED);
+
+  ADC2->PCSEL = (1U << 5) | (1U << 11);
+  /* USER CODE END ADC2_Init 2 */
+
 }
 
 /**
@@ -266,17 +634,17 @@ static void MX_TIM1_Init(void)
   LL_TIM_SetTriggerOutput(TIM1, LL_TIM_TRGO_RESET);
   LL_TIM_SetTriggerOutput2(TIM1, LL_TIM_TRGO2_RESET);
   LL_TIM_DisableMasterSlaveMode(TIM1);
-  TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_ENABLE;
-  TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_ENABLE;
+  TIM_BDTRInitStruct.OSSRState = LL_TIM_OSSR_DISABLE;
+  TIM_BDTRInitStruct.OSSIState = LL_TIM_OSSI_DISABLE;
   TIM_BDTRInitStruct.LockLevel = LL_TIM_LOCKLEVEL_OFF;
-  TIM_BDTRInitStruct.DeadTime = 100;
+  TIM_BDTRInitStruct.DeadTime = 10;
   TIM_BDTRInitStruct.BreakState = LL_TIM_BREAK_DISABLE;
   TIM_BDTRInitStruct.BreakPolarity = LL_TIM_BREAK_POLARITY_HIGH;
   TIM_BDTRInitStruct.BreakFilter = LL_TIM_BREAK_FILTER_FDIV1;
   TIM_BDTRInitStruct.Break2State = LL_TIM_BREAK2_DISABLE;
   TIM_BDTRInitStruct.Break2Polarity = LL_TIM_BREAK2_POLARITY_HIGH;
   TIM_BDTRInitStruct.Break2Filter = LL_TIM_BREAK2_FILTER_FDIV1;
-  TIM_BDTRInitStruct.AutomaticOutput = LL_TIM_AUTOMATICOUTPUT_ENABLE;
+  TIM_BDTRInitStruct.AutomaticOutput = LL_TIM_AUTOMATICOUTPUT_DISABLE;
   LL_TIM_BDTR_Init(TIM1, &TIM_BDTRInitStruct);
   /* USER CODE BEGIN TIM1_Init 2 */
 
@@ -297,41 +665,61 @@ static void MX_TIM1_Init(void)
 }
 
 /**
-  * @brief TIM2 Initialization Function
+  * @brief TIM4 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_TIM2_Init(void)
+static void MX_TIM4_Init(void)
 {
 
-  /* USER CODE BEGIN TIM2_Init 0 */
+  /* USER CODE BEGIN TIM4_Init 0 */
 
-  /* USER CODE END TIM2_Init 0 */
+  /* USER CODE END TIM4_Init 0 */
 
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
 
   /* Peripheral clock enable */
-  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM2);
+  LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_TIM4);
 
-  /* TIM2 interrupt Init */
-  NVIC_SetPriority(TIM2_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
-  NVIC_EnableIRQ(TIM2_IRQn);
+  /* TIM4 interrupt Init */
+  NVIC_SetPriority(TIM4_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(TIM4_IRQn);
 
-  /* USER CODE BEGIN TIM2_Init 1 */
+  /* USER CODE BEGIN TIM4_Init 1 */
 
-  /* USER CODE END TIM2_Init 1 */
+  /* USER CODE END TIM4_Init 1 */
   TIM_InitStruct.Prescaler = 0;
   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  TIM_InitStruct.Autoreload = 239;
+  TIM_InitStruct.Autoreload = 1199;
   TIM_InitStruct.ClockDivision = LL_TIM_CLOCKDIVISION_DIV1;
-  LL_TIM_Init(TIM2, &TIM_InitStruct);
-  LL_TIM_DisableARRPreload(TIM2);
-  LL_TIM_SetClockSource(TIM2, LL_TIM_CLOCKSOURCE_INTERNAL);
-  LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_RESET);
-  LL_TIM_DisableMasterSlaveMode(TIM2);
-  /* USER CODE BEGIN TIM2_Init 2 */
+  LL_TIM_Init(TIM4, &TIM_InitStruct);
+  LL_TIM_DisableARRPreload(TIM4);
+  LL_TIM_SetClockSource(TIM4, LL_TIM_CLOCKSOURCE_INTERNAL);
+  LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_RESET);
+  LL_TIM_DisableMasterSlaveMode(TIM4);
+  /* USER CODE BEGIN TIM4_Init 2 */
 
-  /* USER CODE END TIM2_Init 2 */
+  /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* Init with LL driver */
+  /* DMA controller clock enable */
+  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
+
+  /* DMA interrupt init */
+  /* DMA1_Stream0_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Stream0_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA1_Stream0_IRQn);
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Stream1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA1_Stream1_IRQn);
 
 }
 
@@ -342,17 +730,61 @@ static void MX_TIM2_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOE_CLK_ENABLE();
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOC);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOA);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOB);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOF);
+  LL_AHB4_GRP1_EnableClock(LL_AHB4_GRP1_PERIPH_GPIOE);
+
+  /**/
+  LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_6);
+
+  /**/
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_2;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+  LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+  /**/
+  GPIO_InitStruct.Pin = LL_GPIO_PIN_6;
+  GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+  GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+  GPIO_InitStruct.Pull = LL_GPIO_PULL_DOWN;
+  LL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+
+
+float adc_to_voltage(uint16_t adc_val) {
+    return 0.0101158f * adc_val - 336.14f;
+}
+
+float adc_to_voltage_out(uint16_t adc_val) {
+    return 0.008327f * adc_val - 277.34f;
+}
+
+float adc_to_current_inductor(uint16_t adc_val) {
+    return 0.0005078f * adc_val - 7.06f;
+}
+
+float adc_to_current_out(uint16_t adc_val) {
+    return 0.0005119f * adc_val - 7.82f;
+}
+
+
+
+
+
 
 /* USER CODE END 4 */
 
@@ -367,7 +799,6 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
-	  test = 2;
   }
   /* USER CODE END Error_Handler_Debug */
 }

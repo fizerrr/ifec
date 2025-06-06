@@ -19,15 +19,22 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "control.h"
 #include "stm32h7xx_it.h"
-
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "pi_controller.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
+extern int test_iqr;
+
+extern PI_Controller pi_regulator;
+extern int target_duty;
+extern float setpoint;
+extern float voltage_out;
+extern float current_out;
+extern uint16_t buck_fault;
 
 /* USER CODE END TD */
 
@@ -187,7 +194,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
+
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
@@ -201,24 +208,78 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles TIM2 global interrupt.
+  * @brief This function handles DMA1 stream0 global interrupt.
   */
-void TIM2_IRQHandler(void)
+void DMA1_Stream0_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM2_IRQn 0 */
-	  if (LL_TIM_IsActiveFlag_UPDATE(TIM2))
-	  {
-	    LL_TIM_ClearFlag_UPDATE(TIM2);
+  /* USER CODE BEGIN DMA1_Stream0_IRQn 0 */
 
-	    // ⬇️ Twoja pętla regulacji:
-	    Control_Loop();
-	  }
-  /* USER CODE END TIM2_IRQn 0 */
-  /* USER CODE BEGIN TIM2_IRQn 1 */
+  /* USER CODE END DMA1_Stream0_IRQn 0 */
 
-  /* USER CODE END TIM2_IRQn 1 */
+  /* USER CODE BEGIN DMA1_Stream0_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream0_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 stream1 global interrupt.
+  */
+void DMA1_Stream1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Stream1_IRQn 0 */
+
+  /* USER CODE END DMA1_Stream1_IRQn 0 */
+
+  /* USER CODE BEGIN DMA1_Stream1_IRQn 1 */
+
+  /* USER CODE END DMA1_Stream1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+    if (LL_TIM_IsActiveFlag_UPDATE(TIM4)) {
+        LL_TIM_ClearFlag_UPDATE(TIM4);
+
+        LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_6);
+
+
+
+		target_duty = (uint16_t) PI_Update(&pi_regulator, setpoint, voltage_out,current_out);
+
+
+
+		LL_TIM_OC_SetCompareCH1(TIM1, target_duty);
+
+
+
+
+//	  if(buck_fault)
+//	  {
+//			  LL_TIM_OC_SetCompareCH1(TIM1, 0);
+//			  PI_Reset(&pi_regulator);
+//			  LL_TIM_DisableCounter(TIM4);
+//	  }
+
+
+
+
+
+        LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_6);
+    }
+  /* USER CODE END TIM4_IRQn 0 */
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
+
+
+
+
 
 /* USER CODE END 1 */
