@@ -1,0 +1,120 @@
+/*
+ * command_parser.c
+ *
+ *  Created on: Jun 25, 2025
+ *      Author: birdd
+ */
+
+#include "command_parser.h"
+#include "usart.h"           // provides UART4 instance and LL_USART functions
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+
+// Internal state
+static int  output_state = 0;
+static float vset         = 0.0f;
+
+/**
+ * @brief  Low-level send of a single character over UART4
+ */
+static void uart_send_char(char c) {
+    // Wait until TXE (Transmit Data Register Empty)
+    while (!LL_USART_IsActiveFlag_TXE(UART4));
+    LL_USART_TransmitData8(UART4, (uint8_t)c);
+}
+
+/**
+ * @brief  Send a NUL-terminated string over UART4
+ */
+static void uart_send_str(const char *s) {
+    while (*s) {
+        uart_send_char(*s++);
+    }
+}
+
+/**
+ * @brief  Respond with current output state: '0' or '1' followed by '\n'
+ */
+static void response_output_state(void) {
+    char buf[3] = { output_state ? '1' : '0', '\n', '\0' };
+    uart_send_str(buf);
+}
+
+/**
+ * @brief  Respond with set voltage (vset) formatted as X.YY\n
+ */
+static void response_vset(void) {
+    char buf[16];
+    // snprintf rounds correctly (adds +0.005)
+    snprintf(buf, sizeof(buf), "%.2f\n", vset);
+    uart_send_str(buf);
+}
+
+/**
+ * @brief  Respond with measured voltage via external ADC function
+ */
+static void response_vmeas(void) {
+    /*extern float get_measured_voltage(void);*/
+    float vmeas = vset; //get_measured_voltage();
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%.2f\n", vmeas);
+    uart_send_str(buf);
+}
+
+/**
+ * @brief  Parse and handle a received command line
+ * @param  line: NUL-terminated string without CR/LF
+ */
+void command_parser_process_line(const char *line) {
+    if (line == NULL || *line == '\0')
+        return;
+
+    // Skip leading whitespace
+    while (isspace((unsigned char)*line))
+        line++;
+
+    // OUTPUT? -> query output state
+    if (strncasecmp(line, "OUTPUT?", 7) == 0) {
+        response_output_state();
+        return;
+    }
+
+    // OUTPUT <0|1|ON|OFF>
+    if (strncasecmp(line, "OUTPUT ", 7) == 0) {
+        const char *arg = line + 7;
+        if (strncasecmp(arg, "ON", 2) == 0) {
+            output_state = 1;
+        } else if (strncasecmp(arg, "OFF", 3) == 0) {
+            output_state = 0;
+        } else {
+            int val = atoi(arg);
+            if (val == 0 || val == 1)
+                output_state = val;
+        }
+        return;
+    }
+
+    // VOLT? -> query set voltage
+    if (strncasecmp(line, "VOLT?", 5) == 0) {
+        response_vset();
+        return;
+    }
+
+    // VOLT <float>
+    if (strncasecmp(line, "VOLT ", 5) == 0) {
+        float tmp = strtof(line + 5, NULL);
+        vset = tmp;
+        return;
+    }
+
+    // FETCH:VOLT? or FETC:VOLT? -> query measured voltage
+    if (strncasecmp(line, "FETCH:VOLT?", 11) == 0 ||
+        strncasecmp(line, "FETC:VOLT?", 10) == 0) {
+        response_vmeas();
+        return;
+    }
+
+    // Unknown command: ignore or implement error response here
+}
