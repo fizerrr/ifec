@@ -24,7 +24,7 @@
 /* USER CODE BEGIN Includes */
 
 
-extern int testcm4;
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

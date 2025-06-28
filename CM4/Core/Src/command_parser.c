@@ -14,7 +14,7 @@
 
 // Internal state
 static int  output_state = 0;
-static float vset         = 0.0f;
+static float vset = 0.0f;
 
 /**
  * @brief  Low-level send of a single character over UART4
@@ -38,17 +38,23 @@ static void uart_send_str(const char *s) {
  * @brief  Respond with current output state: '0' or '1' followed by '\n'
  */
 static void response_output_state(void) {
-    char buf[3] = { output_state ? '1' : '0', '\n', '\0' };
-    uart_send_str(buf);
+	char buff[32] = {0};
+
+	snprintf(buff, sizeof(buff), "%d\n", output_state);
+
+    uart_send_str(buff);
 }
 
 /**
  * @brief  Respond with set voltage (vset) formatted as X.YY\n
  */
 static void response_vset(void) {
-    char buf[16];
+    char buf[32];
     // snprintf rounds correctly (adds +0.005)
-    snprintf(buf, sizeof(buf), "%.2f\n", vset);
+    int intPart = (int)vset;
+    int fracPart = (int)((vset - intPart + 0.005) * 100);
+
+    snprintf(buf, sizeof(buf), "%d,%02d\n", intPart, abs(fracPart));
     uart_send_str(buf);
 }
 
@@ -58,8 +64,11 @@ static void response_vset(void) {
 static void response_vmeas(void) {
     /*extern float get_measured_voltage(void);*/
     float vmeas = vset; //get_measured_voltage();
-    char buf[16];
-    snprintf(buf, sizeof(buf), "%.2f\n", vmeas);
+    char buf[32];
+    int intPart = (int)vmeas;
+    int fracPart = (int)((vmeas - intPart + 0.005) * 100);
+
+    snprintf(buf, sizeof(buf), "%d,%02d\n", intPart, abs(fracPart));
     uart_send_str(buf);
 }
 

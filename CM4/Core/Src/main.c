@@ -25,6 +25,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "app_uart.h"
+#include <stdbool.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -39,6 +41,8 @@
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define LINE_BUFFER_SIZE 32
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -46,6 +50,8 @@
 int testcm4 = 0;
 
 
+char command_buffer[LINE_BUFFER_SIZE];
+volatile bool command_ready = false;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -97,8 +103,8 @@ int main(void)
   MX_DMA_Init();
   MX_GPIO_Init();
   MX_UART4_Init();
-  App_UART_Init();
   /* USER CODE BEGIN 2 */
+  App_UART_Init();
 
 //  LL_USART_EnableIT_RXNE(UART4);
   /* USER CODE END 2 */
@@ -110,7 +116,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
+	  testcm4++;
+	    if (command_ready) {
+	        command_parser_process_line(command_buffer);
+	        command_ready = false;
+	    }
 
   }
   /* USER CODE END 3 */

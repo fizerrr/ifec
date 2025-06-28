@@ -24,7 +24,8 @@ Core/Src/app_uart.o: ../Core/Src/app_uart.c ../Core/Inc/app_uart.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h \
+ ../Core/Inc/main.h
 ../Core/Inc/app_uart.h:
 ../Core/Inc/ring_buffer.h:
 ../Core/Inc/command_parser.h:
@@ -54,3 +55,4 @@ Core/Src/app_uart.o: ../Core/Src/app_uart.c ../Core/Inc/app_uart.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h:
+../Core/Inc/main.h:
