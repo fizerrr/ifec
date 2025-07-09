@@ -23,24 +23,67 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "pi_controller.h"
+#include "pi_controller_current.h"
+#include "no_load_controller.h"
+#include "power_on.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN TD */
+float KP_V_dynamic=5;
+float KP_I_dynamic=0.1;
+float KP_V_dynamic2=0.1f;
+float KP_I_dynamic2=0.00001f;
+extern int start;
+extern int current_case;
+int zmiana_stanu;
 extern int test_iqr;
-
+extern int plus;
+extern int minus;
+extern int zero;
 extern PI_Controller pi_regulator;
+extern PI_Controller_current pic_regulator;
+extern NO_LOAD_CONTROLLER nol_regulator;
 extern int target_duty;
 extern float setpoint;
+extern float previous_setpoint;
 extern float voltage_out;
+extern float voltage_in;
+extern float V_reg_out;
 extern float current_out;
+extern float kp_V_start;
+extern float kp_I_start;
+extern float current_inductor_filter;
+extern float old_current;
 extern uint16_t buck_fault;
+int entered_case1_once = 0; // Flaga stanu
+int xd=0;
+float Kp_pi_nominal;
+float Kp_pic_nominal;
+int force_case1_counter = 0;
+volatile uint8_t blokada_case_change = 0;
+int kp_boost_counter = 0;
+extern float current_inductor;
+extern float setpoint_I;
+extern float integral_set_V;
+extern float integral_set_I;
+extern float voltage_out_filter;
+extern float old_voltage;
+int xddd=200;
+#define MANUAL_DUTY_CYCLES 30
+int manual_duty_counter = 0;
+int manual_duty_array[MANUAL_DUTY_CYCLES] = {
+    400, 350, 320, 280, 100, 50,
+    140, 150, 150, 150,
+    145, 145, 140, 140, 140, 140, 140, 140, 140, 140,
+    140, 140, 140, 140, 140, 140, 140, 140, 140, 140
+};
 
 /* USER CODE END TD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+void filter(float *out, float *old, float coff, float in);
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -236,48 +279,180 @@ void DMA1_Stream1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM2 global interrupt.
+  */
+void TIM2_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM2_IRQn 0 */
+
+  /* USER CODE END TIM2_IRQn 0 */
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+
+  /* USER CODE END TIM2_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM4 global interrupt.
   */
 void TIM4_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM4_IRQn 0 */
+	static int previous_case = -1;
+
     if (LL_TIM_IsActiveFlag_UPDATE(TIM4)) {
         LL_TIM_ClearFlag_UPDATE(TIM4);
+       // LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_6);
 
-        LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_6);
+        if (previous_setpoint != setpoint) {
+            previous_setpoint = setpoint;
+            blokada_case_change = 40; // blokuj zmianę current_case przez 20 cykli
+        }
+
+        if (blokada_case_change > 0) {
+            blokada_case_change--;
+        } else if (force_case1_counter > 0) {
+            force_case1_counter--;
+            current_case = 1;
+        } else {
+            current_case = (current_out >= 0.5f && target_duty >= 0) ? 1 : 0;
+        }
+
+        current_case =1;
+
+        switch (current_case) {
+            case 0:
+
+            	 if (previous_case == 1) {
+            	                    nol_regulator.previous_setpoint = 151.0f;
+
+            	                }
+                // Reset flagi po wyjściu z case 1
+                entered_case1_once = 0;
+
+
+                // Brak obciążenia – np. pomiń regulator prądu
+                LL_TIM_CC_DisableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+                target_duty = (int)NOL_Update(&nol_regulator, setpoint, voltage_out, voltage_in);
+
+                switch ((target_duty > 0) ? 1 : (target_duty < 0) ? -1 : 0) {
+                    case 0:
+                        LL_TIM_OC_SetCompareCH1(TIM1, 0);
+                        LL_TIM_OC_SetCompareCH1(TIM2, 0);
+                        //zero++;
+                        break;
+
+                    case 1:
+                        LL_TIM_OC_SetCompareCH1(TIM1, target_duty);
+                        LL_TIM_OC_SetCompareCH1(TIM2, 0);
+                        plus++;
+                        break;
+
+                    case -1:
+                        LL_TIM_OC_SetCompareCH1(TIM1, 0);
+                        LL_TIM_OC_SetCompareCH1(TIM2, -target_duty);
+                        minus++;
+                        break;
+                }
+
+                break;
+
+                case 1: {
+                    static int case1_divider = 0;
+
+                    // Jednorazowe wejście
+                    if (!entered_case1_once) {
+                        entered_case1_once = 1;
+                        force_case1_counter = 1000000;
+                        xd++;
+                        LL_TIM_OC_SetCompareCH1(TIM2, 0);
+                        LL_TIM_CC_EnableChannel(TIM1, LL_TIM_CHANNEL_CH1N);
+
+                     //   PI_SetIntegralLimit(&pi_regulator, integral_set_V);
+                       // PIC_SetIntegralLimit(&pic_regulator, integral_set_I);
+                      //  manual_duty_counter = 0;
+                        kp_boost_counter = 0;
+                       // case1_divider = 0; // Wyzeruj licznik przy wejściu!
+                    }
+
+                    if (kp_boost_counter < 5) {
+                        pi_regulator.Kp = KP_V_dynamic;
+                        pic_regulator.Kp = KP_I_dynamic;
+                        //kp_boost_counter++;
+                    } else if (kp_boost_counter <10) {
+                    	pi_regulator.Kp = KP_V_dynamic2;
+                    	pic_regulator.Kp = KP_I_dynamic2;
+                    	//kp_boost_counter++;
+                    } else {
+                    	pi_regulator.Kp = kp_V_start;
+                    	pic_regulator.Kp = kp_I_start;
+                    }
+
+
+                    // Co 10 cykli (czyli 20 kHz), lub od razu po wejściu
+
+                    	filter(&current_inductor_filter, &old_current, 0.001f, current_inductor);
+                    	//filter(&voltage_out_filter, &old_voltage, 0.001f, voltage_out);
+                    	if(kp_boost_counter<10000)
+                        {V_reg_out = PI_Update(&pi_regulator, setpoint, voltage_out, voltage_in);
+                        target_duty = (int)PIC_Update(&pic_regulator, V_reg_out, current_inductor_filter);
+                        kp_boost_counter++;
+                        }
+
+
+                    	else
+                    	{
+                        target_duty=420;
+                    	}
+                    	target_duty=xddd;
+                        LL_TIM_OC_SetCompareCH1(TIM1, target_duty);
+                        LL_TIM_OC_SetCompareCH1(TIM2, 0);
 
 
 
-		target_duty = (uint16_t) PI_Update(&pi_regulator, setpoint, voltage_out,current_out);
+                }
+                break;
 
 
+        }
 
-		LL_TIM_OC_SetCompareCH1(TIM1, target_duty);
-
-
-
-
-//	  if(buck_fault)
-//	  {
-//			  LL_TIM_OC_SetCompareCH1(TIM1, 0);
-//			  PI_Reset(&pi_regulator);
-//			  LL_TIM_DisableCounter(TIM4);
-//	  }
-
-
-
-
-
-        LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_6);
+        previous_case = current_case;
     }
-  /* USER CODE END TIM4_IRQn 0 */
-  /* USER CODE BEGIN TIM4_IRQn 1 */
 
-  /* USER CODE END TIM4_IRQn 1 */
+    //LL_GPIO_ResetOutputPin(GPIOC, LL_GPIO_PIN_6);
+}
+
+
+/* USER CODE BEGIN 1 */
+
+
+void filter(float *out,float *old, float coff, float in)
+{
+    *out= coff*in +(1-coff)*(*old);
+    *old=*out;
+
+}
+
+/**
+  * @brief This function handles TIM8 update interrupt and TIM13 global interrupt.
+  */
+void TIM8_UP_TIM13_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM8_UP_TIM13_IRQn 0 */
+	PowerOnSequence_Update();
+  /* USER CODE END TIM8_UP_TIM13_IRQn 0 */
+
+  /* USER CODE BEGIN TIM8_UP_TIM13_IRQn 1 */
+
+  /* USER CODE END TIM8_UP_TIM13_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
 
+
+/**
+  * @brief This function handles TIM8 update interrupt and TIM13 global interrupt.
+  */
+
+/* USER CODE BEGIN 1 */
 
 
 

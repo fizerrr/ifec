@@ -1,0 +1,8 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:3024:26:LL_USART_IsActiveFlag_TXE_TXFNF	2
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:4275:22:LL_USART_TransmitData8	1
+../Core/Src/command_parser.c:25:13:uart_send_char	2
+../Core/Src/command_parser.c:34:13:uart_send_str	2
+../Core/Src/command_parser.c:43:13:response_output_enable	1
+../Core/Src/command_parser.c:55:13:response_vset	1
+../Core/Src/command_parser.c:68:13:response_vmeas	1
+../Core/Src/command_parser.c:83:6:command_parser_process_line	14

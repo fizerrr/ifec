@@ -18,9 +18,16 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
+#include "usart.h"
+#include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "app_uart.h"
+#include <stdbool.h>
+#include <string.h>
+#include "ipc.h"
 
 /* USER CODE END Includes */
 
@@ -36,11 +43,17 @@
 #define HSEM_ID_0 (0U) /* HW semaphore 0*/
 #endif
 
+#define LINE_BUFFER_SIZE 32
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+int testcm4 = 0;
 
+
+char command_buffer[LINE_BUFFER_SIZE];
+volatile bool command_ready = false;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -50,13 +63,16 @@
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-static void MX_DMA_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+int output_enable = 0;
+float vset = 0;
+float voltage_measured;
 
 /* USER CODE END 0 */
 
@@ -91,35 +107,44 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_DMA_Init();
+  MX_GPIO_Init();
+  MX_UART4_Init();
   /* USER CODE BEGIN 2 */
+  App_UART_Init();
 
+//  LL_USART_EnableIT_RXNE(UART4);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+	    if (command_ready) {
+	        command_parser_process_line(command_buffer);
+	        command_ready = false;
+	    }
+
+
+//	            // Odczyt danych sterujących od CM4 (opcjonalny: np. do logów lub logiki sterowania)
+//
+//	    	testcm4++;
+	            // Zapis napięcia wyjściowego z przekształtnika do współdzielonej struktury
+  				voltage_measured = IPC_SHARED->nap_wejsciowe;
+
+  				IPC_SHARED->stan_przeksztaltnika = output_enable;
+  				IPC_SHARED->nap_zadane = vset;
+
+
   }
   /* USER CODE END 3 */
 }
 
-/**
-  * Enable DMA controller clock
-  */
-static void MX_DMA_Init(void)
-{
-
-  /* Init with LL driver */
-  /* DMA controller clock enable */
-  LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_DMA1);
-
-}
-
 /* USER CODE BEGIN 4 */
+
 
 /* USER CODE END 4 */
 

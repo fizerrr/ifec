@@ -23,7 +23,8 @@ Core/Src/stm32h7xx_it.o: ../Core/Src/stm32h7xx_it.c ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h \
  ../Core/Inc/stm32h7xx_it.h ../Core/Inc/pi_controller.h \
- ../Core/Inc/main.h
+ ../Core/Inc/main.h ../Core/Inc/pi_controller_current.h \
+ ../Core/Inc/no_load_controller.h ../Core/Inc/power_on.h
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:
 ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h:
@@ -51,3 +52,6 @@ Core/Src/stm32h7xx_it.o: ../Core/Src/stm32h7xx_it.c ../Core/Inc/main.h \
 ../Core/Inc/stm32h7xx_it.h:
 ../Core/Inc/pi_controller.h:
 ../Core/Inc/main.h:
+../Core/Inc/pi_controller_current.h:
+../Core/Inc/no_load_controller.h:
+../Core/Inc/power_on.h:

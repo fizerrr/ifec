@@ -1,0 +1,5 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:2998:26:LL_USART_IsActiveFlag_RXNE_RXFNE	2
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:3479:22:LL_USART_EnableIT_RXNE_RXFNE	2
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:4252:25:LL_USART_ReceiveData8	1
+../Core/Src/app_uart.c:27:6:App_UART_Init	1
+../Core/Src/app_uart.c:31:6:App_UART_IRQHandler	7

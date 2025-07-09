@@ -1,0 +1,11 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:6902:22:LL_ADC_Enable	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:6990:22:LL_ADC_StartCalibration	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:7006:26:LL_ADC_IsCalibrationOnGoing	2
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:7037:22:LL_ADC_REG_StartConversion	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:7462:26:LL_ADC_IsActiveFlag_ADRDY	2
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_dma.h:489:22:LL_DMA_EnableStream	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_dma.h:1051:22:LL_DMA_SetDataLength	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_dma.h:1840:22:LL_DMA_SetMemoryAddress	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_dma.h:1865:22:LL_DMA_SetPeriphAddress	1
+../Core/Src/adc_config.c:35:6:ADC1_Init_Custom	3
+../Core/Src/adc_config.c:54:6:ADC2_Init_Custom	3

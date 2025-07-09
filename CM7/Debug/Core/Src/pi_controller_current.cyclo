@@ -1,0 +1,4 @@
+../Core/Src/pi_controller_current.c:10:6:PIC_Init	1
+../Core/Src/pi_controller_current.c:21:7:PIC_Update	5
+../Core/Src/pi_controller_current.c:47:6:PIC_Reset	1
+../Core/Src/pi_controller_current.c:51:6:PIC_SetIntegralLimit	1

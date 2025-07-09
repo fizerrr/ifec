@@ -45,6 +45,7 @@ MEMORY
 {
 FLASH (rx)     : ORIGIN = 0x08100000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x10000000, LENGTH = 288K
+RAM_D2 (xrw) : ORIGIN = 0x30000000, LENGTH = 128K
 }
 
 /* Define output sections */
