@@ -1,3 +1,3 @@
 ../Core/Src/no_load_controller.c:10:6:NOL_Init	24	static
 ../Core/Src/no_load_controller.c:18:7:NOL_Update	32	static
-../Core/Src/no_load_controller.c:135:6:NOL_Reset	16	static
+../Core/Src/no_load_controller.c:136:6:NOL_Reset	16	static

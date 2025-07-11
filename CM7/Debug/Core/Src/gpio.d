@@ -21,6 +21,7 @@ Core/Src/gpio.o: ../Core/Src/gpio.c ../Core/Inc/gpio.h ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h \
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h
 ../Core/Inc/gpio.h:
 ../Core/Inc/main.h:
@@ -46,4 +47,5 @@ Core/Src/gpio.o: ../Core/Src/gpio.c ../Core/Inc/gpio.h ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h:

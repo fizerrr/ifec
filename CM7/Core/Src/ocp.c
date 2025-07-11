@@ -1,47 +1,51 @@
 #include "ocp.h"
-#include "tim.h"  // jeśli używasz LL_TIM_CC_DisableChannel()
+#include "tim.h"
 
-static float filtered_current = 0.0f;
-static float old_current = 0.0f;
-static float ocp_limit = 1.0f;
-static float ocp_filter_coeff = 0.05f;
+
+static float ocp_limit = 13.0f;
 static int ocp_triggered = 0;
+static int states[2];
 
-static void filter(float *out, float *old, float coff, float in)
-{
-    *out = coff * in + (1.0f - coff) * (*old);
-    *old = *out;
-}
 
-void OCP_Init(float current_limit, float filter_coeff)
+void OCP_Init(float current_limit)
 {
     ocp_limit = current_limit;
-    ocp_filter_coeff = filter_coeff;
-    filtered_current = 0.0f;
-    old_current = 0.0f;
     ocp_triggered = 0;
 }
 
 int OCP_Check(float current)
 {
-    filter(&filtered_current, &old_current, ocp_filter_coeff, current);
 
-    if (!ocp_triggered && filtered_current > ocp_limit)
+
+    if (!ocp_triggered && current > ocp_limit)
     {
-        // Wyłącz PWM lub zareaguj
-
-        LL_TIM_CC_DisableChannel(TIM8, LL_TIM_CHANNEL_CH1);
-        LL_TIM_CC_DisableChannel(TIM8, LL_TIM_CHANNEL_CH1N);
         ocp_triggered = 1;
+
+        LL_GPIO_SetOutputPin(GPIOD, LL_GPIO_PIN_0);
     }
 
     return ocp_triggered;
+
 }
 
-void OCP_Reset(void)
+void OCP_Reset(float current, int state)
 {
-    filtered_current = 0.0f;
-    old_current = 0.0f;
+
+    states[1] = states[0];
+
+    states[0] = state;
+
+
+    if (ocp_triggered && current < ocp_limit && !states[0] && states[1])
+	{
+
     ocp_triggered = 0;
+
+    LL_GPIO_ResetOutputPin(GPIOD, LL_GPIO_PIN_0);
+
+	}
+
+
+
 }
 

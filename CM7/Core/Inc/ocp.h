@@ -8,9 +8,9 @@
 #ifndef __OCP_H__
 #define __OCP_H__
 
-void OCP_Init(float current_limit, float filter_coeff);
+void OCP_Init(float current_limit);
 int OCP_Check(float current);
-void OCP_Reset(void);
+void OCP_Reset(float current, int state);
 
 
 #endif

@@ -1,0 +1,10 @@
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:1523:22:LL_TIM_EnableCounter	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:1534:22:LL_TIM_DisableCounter	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:2058:22:LL_TIM_CC_EnableChannel	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:2087:22:LL_TIM_CC_DisableChannel	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:2654:22:LL_TIM_OC_SetCompareCH1	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:4566:22:LL_TIM_EnableIT_UPDATE	1
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:4577:22:LL_TIM_DisableIT_UPDATE	1
+../Core/Src/controll.c:19:5:State_Controller_Update	6
+../Core/Src/controll.c:53:6:Controll_Enable	1
+../Core/Src/controll.c:64:6:Controll_Disable	1

@@ -57,9 +57,9 @@ float NOL_Update(NO_LOAD_CONTROLLER *nol, float setpoint, float voltage_out, flo
 
         case 2:  // 20 -> 60
         	 if (nol->licznik <= 10) {
-        	                output = 1150.0f;
+        	                output = 1100.0f;
         	                nol->licznik++;
-        	            } else if (nol->licznik < 50) {
+        	            } else if (nol->licznik < 10) {
         	                nol->licznik++;
         	            } else {
         	                output = (voltage_out < (setpoint - 0.05f)) ? 6.0f : 0.0f;
@@ -68,13 +68,13 @@ float NOL_Update(NO_LOAD_CONTROLLER *nol, float setpoint, float voltage_out, flo
 
 
         case 3:  // 60 -> 150
-        	 if (nol->licznik <= 17) {
+        	 if (nol->licznik <= 15) {
         	        	                output = 1160.0f;
         	        	                nol->licznik++;
-        	        	            } else if (nol->licznik < 17) {
+        	        	            } else if (nol->licznik < 15) {
         	        	                nol->licznik++;
         	        	            } else {
-        	        	                output = (voltage_out < (setpoint - 0.05f)) ? 6.0f : 0.0f;
+        	        	                output = (voltage_out < (setpoint - 0.05f)) ? 60.0f : 0.0f;
         	        	            }
 
 
@@ -82,12 +82,12 @@ float NOL_Update(NO_LOAD_CONTROLLER *nol, float setpoint, float voltage_out, flo
 
         case 4:  // 150 -> 60
 
-        	if (nol->licznik <= 200 && voltage_out>setpoint ) {
-        	        	     output = -800.0f;
+        	if (nol->licznik <= 500 && voltage_out>setpoint ) {
+        	        	     output = -1100.0f;
         	        	    nol->licznik++;}
         	        	 else {
         	          output = (voltage_out < (setpoint - 0.05f)) ? 6.0f : 0.0f;
-        	          nol->licznik=nol->licznik +200;
+        	          nol->licznik=nol->licznik +500;
         	        	         	        	            }
             break;
 
@@ -111,9 +111,10 @@ float NOL_Update(NO_LOAD_CONTROLLER *nol, float setpoint, float voltage_out, flo
         	if (voltage_out > (setpoint + 0.5f)) {
         	    output = -1100.0f;
         	} else if (voltage_out > (setpoint + 0.1f)) {
-        	    output = -100.0f;
+        	    output = -50.0f;
         	} else if (voltage_out < (setpoint - 0.05f)) {
-        	    output = 6.0f;
+        	    if(setpoint>140)output = 60.0f;
+        		 else output = 6.0f;
         	} else {
         	    output = 0.0f;
         	}

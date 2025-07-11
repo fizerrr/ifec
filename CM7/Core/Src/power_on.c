@@ -9,17 +9,17 @@
 #include "power_on.h"
 
 
-extern float offset_adc1_ch0, offset_adc2_ch0, offset_adc2_ch1;
+extern float offset_adc1_ch0, offset_adc1_ch1, offset_adc2_ch0, offset_adc2_ch1;
 extern uint16_t adc_buffer[2];
 extern uint16_t adc2_buffer[2];
 
 static uint8_t current_deadtime = 255;
-
+#define ADC_OFFSET_SAMPLES 1000
 
 
 void PowerOnSequence_Start(void)
 {
-	LL_mDelay(1000);
+	LL_mDelay(3000);
 
 	LL_GPIO_SetOutputPin(GPIOC, LL_GPIO_PIN_0);
 
@@ -84,11 +84,6 @@ void Fan_Start(void)
 
 }
 
-void Controll_Start(void)
-{
-	  LL_TIM_EnableIT_UPDATE(TIM4);
-	  LL_TIM_EnableCounter(TIM4);
-}
 
 
 
@@ -118,22 +113,27 @@ void Mesurments_Start(void)
 
 
 	LL_TIM_OC_SetCompareCH3(TIM2, 2400);
-//	uint32_t sum_adc1_ch0 = 0;
-//	uint32_t sum_adc2_ch0 = 0;
-//	uint32_t sum_adc2_ch1 = 0;
-//
-//
-//    for (int i = 0; i < 1000; i++) {
-//        sum_adc1_ch0 += adc_buffer[0];
-//        sum_adc2_ch0 += adc2_buffer[0];
-//        sum_adc2_ch1 += adc2_buffer[1];
-//        LL_mDelay(1);  // 1ms opóźnienie, zależne od szybkości próbkowania DMA (można skrócić)
-//    }
-//
-//
-//    offset_adc1_ch0 = sum_adc1_ch0 / 1000;
-//    offset_adc2_ch0 = sum_adc2_ch0 / 1000;
-//    offset_adc2_ch1 = sum_adc2_ch1 / 1000;
+
+    uint32_t sum_adc1_ch0 = 0;
+    uint32_t sum_adc1_ch1 = 0;
+    uint32_t sum_adc2_ch0 = 0;
+    uint32_t sum_adc2_ch1 = 0;
+
+    for (int i = 0; i < ADC_OFFSET_SAMPLES; i++)
+    {
+        LL_mDelay(1); // krótka przerwa, żeby ADC nadążył z DMA
+
+        sum_adc1_ch0 += adc_buffer[0];
+        sum_adc1_ch1 += adc_buffer[1];
+        sum_adc2_ch0 += adc2_buffer[0];
+        sum_adc2_ch1 += adc2_buffer[1];
+    }
+
+    offset_adc1_ch0 = sum_adc1_ch0 / (float)ADC_OFFSET_SAMPLES;
+    offset_adc1_ch1 = sum_adc1_ch1 / (float)ADC_OFFSET_SAMPLES;
+    offset_adc2_ch0 = sum_adc2_ch0 / (float)ADC_OFFSET_SAMPLES;
+    offset_adc2_ch1 = sum_adc2_ch1 / (float)ADC_OFFSET_SAMPLES;
+
 
 	LL_TIM_OC_SetCompareCH3(TIM2, 0);
 

@@ -1,6 +1,7 @@
 "./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o"
 "./Core/Src/adc.o"
 "./Core/Src/adc_config.o"
+"./Core/Src/controll.o"
 "./Core/Src/dma.o"
 "./Core/Src/gpio.o"
 "./Core/Src/main.o"

@@ -22,6 +22,7 @@ Core/Src/power_on.o: ../Core/Src/power_on.c ../Core/Inc/power_on.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h \
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h
 ../Core/Inc/power_on.h:
 ../Core/Inc/main.h:
@@ -47,4 +48,5 @@ Core/Src/power_on.o: ../Core/Src/power_on.c ../Core/Inc/power_on.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:
+../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h:

@@ -32,6 +32,8 @@
 #include "ipc.h"
 #include "power_on.h"
 #include "ocp.h"
+#include "controll.h"
+
 
 
 
@@ -44,8 +46,8 @@ int target_duty=0;
 /* Zmienna do pomiaru czasu */
 float setpoint = 0;
 float previous_setpoint = 0;
-float kp_V_start=0.08f;
-float ki_V_start=1.0f;
+float kp_V_start=0.7f;
+float ki_V_start=0.3f;
 float kp_I_start=0.001f;
 float ki_I_start=1.0f;
 float V_reg_out;
@@ -67,7 +69,13 @@ float current_inductor_filter = 0.0f;
 float old_current = 0.0f;
 float voltage_out_filter=0.0f;
 float old_voltage=0.0f;
+float prog_wejscia=1.5;
 
+float coff = 0.001;
+float coff1 =0.1;
+
+
+int controll_enabled;
 
 /* USER CODE END Includes */
 
@@ -98,17 +106,33 @@ float old_voltage=0.0f;
 uint16_t buck_fault,cec_fault, half_bridge_fault,ocp_state=0;
 
 
-float current_inductor,current_out,voltage_out,voltage_in;
+//float current_inductor,current_out,voltage_out,voltage_in;
 
 uint16_t duty = 0, duty_main = 750, dutych3=600, dutych2=900;
 float set_voltage;
 uint16_t state;
 
+float voltage_out_adc, current_inductor_adc, voltage_in_adc, current_out_adc;
+float voltage_out_adc_out, current_inductor_adc_out, voltage_in_adc_out, current_out_adc_out;
+float voltage_out_adc_old, current_inductor_adc_old, voltage_in_adc_old, current_out_adc_old;
+
+
 float output_max_current_ocp = 13;
+
+float offset_adc1_ch0, offset_adc1_ch1, offset_adc2_ch0, offset_adc2_ch1;
+
+
+void filter(float *out,float *old, float coff, float in);
 
 
 __attribute__((section(".RAM_D2"))) uint16_t adc_buffer[2];
 __attribute__((section(".RAM_D2"))) uint16_t adc2_buffer[2];
+
+
+#define TRIGGER_THRESHOLD 0.5f
+#define TRIGGER_SAMPLE_COUNT 1000
+
+
 
 
 /* USER CODE END PV */
@@ -118,10 +142,7 @@ void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 /* USER CODE BEGIN PFP */
 
-float convert_adc_to_voltage(uint16_t adc_value);
-float adc_to_voltage(uint16_t adc_value);
-float adc_to_current_out(uint16_t adc_val);
-
+int numberoftriger_tomuch = 0, numberoftriger_git = 0;
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -196,11 +217,16 @@ int main(void)
 
 	 Fan_Start();
 
-	 OCP_Init(output_max_current_ocp, 0.01f);
+	 OCP_Init(output_max_current_ocp);
+
+
+	 PI_Init(&pi_regulator, kp_V_start, ki_V_start, TS, output_min_voltage, output_max_voltage);
+	 PIC_Init(&pic_regulator, kp_I_start, ki_I_start, TS, output_min_current, output_max_current);// Ts = 2 µs (500 kHz)
+	 NOL_Init(&nol_regulator, limit_high, limit_low, 0);
 
 	 Buck_Start();
 
-  Controll_Start();
+
 
   /* USER CODE END 2 */
 
@@ -212,10 +238,49 @@ int main(void)
 
 	  	test++;
 
-	  	voltage_out = convert_adc_to_voltage(adc_buffer[0]);
-	  	voltage_in = adc_to_voltage(adc2_buffer[0]);
-	  	current_out = adc_to_current_out(adc2_buffer[1]);
 
+	  	voltage_out_adc = adc_to_voltage_out(adc_buffer[0] - offset_adc1_ch0);
+
+	  	current_inductor_adc = adc_to_current_inductor(adc_buffer[1] - offset_adc1_ch1);
+
+	  	voltage_in_adc = adc2_buffer[0] - offset_adc2_ch0;
+
+
+	  	current_out_adc = adc_to_current_output(adc2_buffer[1] - offset_adc2_ch1);
+
+		filter(&voltage_out_adc_out,       &voltage_out_adc_old,       coff1, voltage_out_adc);
+
+	    filter(&current_inductor_adc_out,  &current_inductor_adc_old,  coff, current_inductor_adc);
+
+
+	    filter(&current_out_adc_out,       &current_out_adc_old,       0.1, current_out_adc);
+
+//	  	LL_TIM_OC_SetCompareCH1(TIM1, duty);
+
+
+//	  	voltage_out = convert_adc_to_voltage(adc_buffer[0]);
+//	  	current_inductor = convert_adc_to_voltage(adc_buffer[1]);
+//	  	voltage_in = adc_to_voltage(adc2_buffer[0]);
+//	  	current_out = adc_to_current_out(adc2_buffer[1]);
+
+
+
+	  	// Wykrycie przekroczenia progu
+	  	if( current_out_adc >  prog_wejscia )
+	  	{
+	  		numberoftriger_tomuch++;
+	  		numberoftriger_git = 0;
+
+	  	} else if(current_out_adc < prog_wejscia)
+	  	{
+	  		numberoftriger_git++;
+	  	}
+
+
+
+
+	  	ocp_state = OCP_Check(current_out_adc_out);
+	  	controll_enabled = State_Controller_Update(state, ocp_state);
 
 	    buck_fault = LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_2);
 	    cec_fault = LL_GPIO_IsInputPinSet(GPIOC, LL_GPIO_PIN_9);
@@ -223,13 +288,19 @@ int main(void)
 
 
 
-	    ocp_state = OCP_Check(current_out);
-
-//	    setpoint = IPC_SHARED->nap_zadane;
+	    setpoint = IPC_SHARED->nap_zadane;
 
 	    state = IPC_SHARED->stan_przeksztaltnika;
 
-	    IPC_SHARED->nap_wejsciowe = voltage_out;
+	    IPC_SHARED->nap_wejsciowe = voltage_out_adc_out;
+
+
+
+
+
+
+
+	    OCP_Reset(current_out_adc_out, state);
 
 
     /* USER CODE END WHILE */
@@ -328,19 +399,14 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void filter(float *out,float *old, float coff, float in)
+{
+    *out= coff*in +(1-coff)*(*old);
+    *old=*out;
 
-float convert_adc_to_voltage(uint16_t adc_value) {
-    return 0.008313f * adc_value - 275.287f;
 }
 
-float adc_to_voltage(uint16_t adc_val) {
-    return 0.0101158f * adc_val - 336.14f;
-}
 
-
-float adc_to_current_out(uint16_t adc_val) {
-    return 0.0005119f * adc_val - 7.82f;
-}
 
 /* USER CODE END 4 */
 

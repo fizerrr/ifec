@@ -17,4 +17,4 @@
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h:872:22:LL_AHB1_GRP1_EnableClock	1
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_bus.h:1384:22:LL_AHB4_GRP1_EnableClock	1
 ../Core/Src/adc.c:28:6:MX_ADC1_Init	2
-../Core/Src/adc.c:125:6:MX_ADC2_Init	2
+../Core/Src/adc.c:138:6:MX_ADC2_Init	2

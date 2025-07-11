@@ -13,7 +13,6 @@
 void PowerOnSequence_Start(void);
 void PowerOnSequence_Update(void);
 void Fan_Start(void);
-void Controll_Start(void);
 void Buck_Start(void);
 void CEC_Start(void);
 void Mesurments_Start(void);

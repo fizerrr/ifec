@@ -13,7 +13,6 @@
 ../Core/Src/power_on.c:20:6:PowerOnSequence_Start	1
 ../Core/Src/power_on.c:43:6:PowerOnSequence_Update	5
 ../Core/Src/power_on.c:72:6:Fan_Start	1
-../Core/Src/power_on.c:87:6:Controll_Start	1
-../Core/Src/power_on.c:95:6:Buck_Start	1
-../Core/Src/power_on.c:106:6:CEC_Start	1
-../Core/Src/power_on.c:115:6:Mesurments_Start	1
+../Core/Src/power_on.c:90:6:Buck_Start	1
+../Core/Src/power_on.c:101:6:CEC_Start	1
+../Core/Src/power_on.c:110:6:Mesurments_Start	2

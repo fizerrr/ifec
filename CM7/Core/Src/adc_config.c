@@ -31,6 +31,7 @@
 //}
 
 #include "adc_config.h"
+#include <stdint.h>
 
 void ADC1_Init_Custom(uint16_t *buffer) {
     // Kalibracja w trybie różnicowym
@@ -40,7 +41,7 @@ void ADC1_Init_Custom(uint16_t *buffer) {
     // DMA konfiguracja
     LL_DMA_SetPeriphAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)&ADC1->DR);
     LL_DMA_SetMemoryAddress(DMA1, LL_DMA_STREAM_0, (uint32_t)buffer);
-    LL_DMA_SetDataLength(DMA1, LL_DMA_STREAM_0, 1);
+    LL_DMA_SetDataLength(DMA1, LL_DMA_STREAM_0, 2);
     LL_DMA_EnableStream(DMA1, LL_DMA_STREAM_0);
 
     ADC1->CFGR &= ~ADC_CFGR_DMNGT;
@@ -69,5 +70,34 @@ void ADC2_Init_Custom(uint16_t *buffer) {
     while (!LL_ADC_IsActiveFlag_ADRDY(ADC2));
     LL_ADC_REG_StartConversion(ADC2);
 }
+
+
+
+
+float adc_to_voltage_out(float adc_value) {
+    // Stałe z dopasowania liniowego
+    const float a = 0.008793f;  // Nachylenie (V na jednostkę ADC)
+    const float b = 0.017f;     // Przesunięcie (offset, V)
+
+    // Przeliczenie wartości ADC na napięcie
+    return a * adc_value ;
+}
+
+
+
+float adc_to_current_inductor(float adc_value) {
+    const float a = 0.000500f;  // Nachylenie [A/LSB]
+    const float b = -0.011f;    // Przesunięcie [A]
+    return a * adc_value + b;
+}
+
+
+float adc_to_current_output(float adc_value) {
+    const float a = 0.000500f;  // Nachylenie [A/LSB]
+    const float b = -0.010f ;    // Przesunięcie [A]
+    return a * adc_value + b;
+}
+
+
 
 

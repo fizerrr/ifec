@@ -133,8 +133,8 @@ int main(void)
 //
 //	    	testcm4++;
 	            // Zapis napięcia wyjściowego z przekształtnika do współdzielonej struktury
-  				voltage_measured = IPC_SHARED->nap_wejsciowe;
 
+	    		voltage_measured = IPC_SHARED->nap_wejsciowe;
   				IPC_SHARED->stan_przeksztaltnika = output_enable;
   				IPC_SHARED->nap_zadane = vset;
 

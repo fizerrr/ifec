@@ -39,6 +39,7 @@ extern "C" {
 #include "stm32h7xx_ll_utils.h"
 #include "stm32h7xx_ll_pwr.h"
 #include "stm32h7xx_ll_tim.h"
+#include "stm32h7xx_ll_usart.h"
 #include "stm32h7xx_ll_gpio.h"
 
 #if defined(USE_FULL_ASSERT)

@@ -3891,21 +3891,21 @@ LOAD D:/ST/STM32CubeIDE_1.14.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  .debug_macro   0x0000000000030d45      0x1ff ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usart.o
  .debug_macro   0x0000000000030f44      0x409 ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usart.o
 
-.debug_line     0x0000000000000000     0x8115
+.debug_line     0x0000000000000000     0x8117
  .debug_line    0x0000000000000000      0x7ce ./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o
  .debug_line    0x00000000000007ce      0x933 ./Core/Src/app_uart.o
  .debug_line    0x0000000000001101      0xa05 ./Core/Src/command_parser.o
  .debug_line    0x0000000000001b06      0x7d8 ./Core/Src/dma.o
  .debug_line    0x00000000000022de      0x7da ./Core/Src/gpio.o
- .debug_line    0x0000000000002ab8      0x98c ./Core/Src/main.o
- .debug_line    0x0000000000003444      0x891 ./Core/Src/stm32h7xx_it.o
- .debug_line    0x0000000000003cd5      0x8b2 ./Core/Src/syscalls.o
- .debug_line    0x0000000000004587      0x583 ./Core/Src/sysmem.o
- .debug_line    0x0000000000004b0a      0xadc ./Core/Src/usart.o
- .debug_line    0x00000000000055e6       0x7a ./Core/Startup/startup_stm32h755zitx.o
- .debug_line    0x0000000000005660      0x753 ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_gpio.o
- .debug_line    0x0000000000005db3     0x1a24 ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_rcc.o
- .debug_line    0x00000000000077d7      0x93e ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usart.o
+ .debug_line    0x0000000000002ab8      0x98e ./Core/Src/main.o
+ .debug_line    0x0000000000003446      0x891 ./Core/Src/stm32h7xx_it.o
+ .debug_line    0x0000000000003cd7      0x8b2 ./Core/Src/syscalls.o
+ .debug_line    0x0000000000004589      0x583 ./Core/Src/sysmem.o
+ .debug_line    0x0000000000004b0c      0xadc ./Core/Src/usart.o
+ .debug_line    0x00000000000055e8       0x7a ./Core/Startup/startup_stm32h755zitx.o
+ .debug_line    0x0000000000005662      0x753 ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_gpio.o
+ .debug_line    0x0000000000005db5     0x1a24 ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_rcc.o
+ .debug_line    0x00000000000077d9      0x93e ./Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_ll_usart.o
 
 .debug_str      0x0000000000000000   0x11af5f
  .debug_str     0x0000000000000000    0xf1864 ./Common/Src/system_stm32h7xx_dualcore_boot_cm4_cm7.o

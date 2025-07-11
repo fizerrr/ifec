@@ -1,4 +1,5 @@
-Core/Src/tim.o: ../Core/Src/tim.c ../Core/Inc/tim.h ../Core/Inc/main.h \
+Core/Src/controll.o: ../Core/Src/controll.c ../Core/Inc/controll.h \
+ ../Core/Inc/ocp.h ../Core/Inc/tim.h ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h7xx.h \
  ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include/stm32h755xx.h \
@@ -22,7 +23,10 @@ Core/Src/tim.o: ../Core/Src/tim.c ../Core/Inc/tim.h ../Core/Inc/main.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_pwr.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h \
  ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h \
- ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h
+ ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h \
+ ../../Common/Inc/ipc.h
+../Core/Inc/controll.h:
+../Core/Inc/ocp.h:
 ../Core/Inc/tim.h:
 ../Core/Inc/main.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_adc.h:
@@ -49,3 +53,4 @@ Core/Src/tim.o: ../Core/Src/tim.c ../Core/Inc/tim.h ../Core/Inc/main.h \
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_tim.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_usart.h:
 ../../Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_ll_gpio.h:
+../../Common/Inc/ipc.h:
